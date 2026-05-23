@@ -2,12 +2,27 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>viewer</title>
+    <title>MirrorMotion Viewer</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div id="viewer"></div>
+
+      <aside id="panel">
+        <h1>MirrorMotion</h1>
+
+        <div class="control">
+          <label for="frame-slider">Frame</label>
+          <input id="frame-slider" type="range" min="0" max="0" value="0" />
+          <div id="frame-label">Frame 0</div>
+        </div>
+
+        <h2>Joint Angles</h2>
+        <div id="angle-panel"></div>
+      </aside>
+    </div>
+
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
