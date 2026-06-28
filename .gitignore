@@ -2,3 +2,5 @@
 __pycache__/
 *.pyc
 .DS_Store
+viewer/node_modules/
+src/__pycache__/
