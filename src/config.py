@@ -1,8 +1,8 @@
-INPUT_FOLDER = "input_images"
-OUTPUT_FOLDER = "output_images"
+INPUT_FOLDER = "../input_images"
+OUTPUT_FOLDER = "../output_images"
 
-LANDMARK_CSV = "data/normalized_landmarks.csv"
-ANGLE_CSV = "data/joint_angles.csv"
+LANDMARK_CSV = "../viewer/public/normalized_landmarks.csv"
+ANGLE_CSV = "../viewer/public/joint_angles.csv"
 
 MAX_HANDS = 1
 MIN_DETECTION_CONFIDENCE = 0.5

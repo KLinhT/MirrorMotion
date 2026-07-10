@@ -3,13 +3,15 @@ import { HAND_CONNECTIONS } from "./handConnections";
 
 // A class to represent the hand skeleton in the 3D scene
 export class HandSkeleton {
-  constructor(scene) {
+  constructor(scene, options = {}) {
+    const jointColour = options.jointColor ?? 0x4cc9f0;
+    const boneColour = options.boneColor ?? 0xffffff;
     this.joints = [];
     this.bones = [];
 
     const jointGeometry = new THREE.SphereGeometry(0.04, 16, 16);
     const jointMaterial = new THREE.MeshStandardMaterial({
-      color: 0x4cc9f0,
+      color: jointColour,
       roughness: 0.4,
       metalness: 0.1,
     });
@@ -22,7 +24,7 @@ export class HandSkeleton {
 
     const boneGeometry = new THREE.CylinderGeometry(0.015, 0.015, 1, 12);
     const boneMaterial = new THREE.MeshStandardMaterial({
-      color: 0xffffff,
+      color: boneColour,
       roughness: 0.5,
       metalness: 0.1,
     });
@@ -43,6 +45,18 @@ export class HandSkeleton {
       this.updateBone(this.bones[index], landmarks[a], landmarks[b]);
     });
   }
+
+
+  setVisible(isVisible) {
+    this.joints.forEach(joint => {
+    joint.visible = isVisible;
+  });
+
+  this.bones.forEach(bone => {
+    bone.visible = isVisible;
+  });
+  
+}
 
   updateBone(bone, start, end) {
     const direction = new THREE.Vector3().subVectors(end, start);

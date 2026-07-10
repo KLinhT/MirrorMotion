@@ -12,6 +12,11 @@ import { createAngleMap, updateAnglePanel } from "./anglePanel";
 const viewer = document.getElementById("viewer");
 const frameSlider = document.getElementById("frame-slider");
 const frameLabel = document.getElementById("frame-label");
+const addComparisonHandBtn = document.getElementById("addComparisonHandBtn");
+const patientSearchPanel = document.getElementById("toggle-patient-id");
+const patientInput = document.getElementById("patient-id");
+
+
 
 // Initialise 3js scene, camera, renderer
 const scene = new THREE.Scene();
@@ -50,18 +55,34 @@ const axes = new THREE.AxesHelper(1);
 scene.add(axes);
 
 // Create the hand skeleton
-const skeleton = new HandSkeleton(scene);
+const skeleton = new HandSkeleton(scene, {
+  jointColor: 0x4cc9f0,
+  boneColor: 0xffffff,
+});
 
+const comparisonSkeleton = new HandSkeleton(scene, {
+  jointColor: 0xffb703,
+  boneColor: 0xffb703,
+});
+
+comparisonSkeleton.setVisible(false);
+
+let allLandmarkRows = [];
 let landmarkRows = [];
 let angleByImage = new Map();
 
 // Main application logic
 async function init() {
-  landmarkRows = await loadCSV("/normalized_landmarks.csv");
+  allLandmarkRows = await loadCSV("/normalized_landmarks.csv");
+  landmarkRows = allLandmarkRows;
+
   const angleRows = await loadCSV("/joint_angles.csv");
 
-  console.log("Loaded landmark rows:", landmarkRows);
-  console.log("Loaded angle rows:", angleRows);
+  populatePatientDropdown(allLandmarkRows);
+  patientInput.addEventListener("change", () => {
+  updateComparisonHand(patientInput.value);
+  });
+
 
   angleByImage = createAngleMap(angleRows);
 
@@ -118,3 +139,69 @@ ${error.message}
     </pre>
   `;
 });
+
+// Add Comparison Hand Event Listeners
+
+addComparisonHandBtn.addEventListener("click", () => {
+  patientSearchPanel.classList.toggle("hidden");
+
+  if(!patientSearchPanel.classList.contains("hidden"))
+  {
+    patientInput.focus();
+  }
+});
+
+function getPatientNumber(row) {
+  return row.patient_number
+}
+
+function populatePatientDropdown(rows) {
+  const patientNumbers = [...new Set(
+    rows
+      .map(row => getPatientNumber(row))
+      .filter(value => value !== undefined && value !== null && value !== "")
+  )];
+
+
+  patientInput.innerHTML = `
+
+    <option value="">Select patient...</option>
+
+    ${patientNumbers
+
+      .map(patientNumber => {
+
+        return `<option value="${patientNumber}">${patientNumber}</option>`;
+
+      })
+
+      .join("")}
+
+  `;
+
+}
+
+function updateComparisonHand(patientNumber) {
+  if (!patientNumber) {
+    comparisonSkeleton.setVisible(false);
+    return;
+  }
+
+  const comparisonRow = allLandmarkRows.find(row => {
+    return String(getPatientNumber(row)) === String(patientNumber);
+  });
+
+  if (!comparisonRow) {
+    console.warn(`No comparison hand found for patient: ${patientNumber}`);
+    comparisonSkeleton.setVisible(false);
+    return;
+  }
+
+  const comparisonLandmarks = landmarkRowToVectors(comparisonRow);
+
+  // Offset slightly so the two hands do not perfectly overlap.
+  
+
+  comparisonSkeleton.update(comparisonLandmarks);
+  comparisonSkeleton.setVisible(true);
+}

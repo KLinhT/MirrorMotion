@@ -43,6 +43,10 @@ h2 {
   margin-top: 20px;
 }
 
+.comparison {
+  margin-top: 20px;
+}
+
 label {
   display: block;
   margin-bottom: 8px;
@@ -51,6 +55,23 @@ label {
 
 input[type="range"] {
   width: 100%;
+}
+
+input[type="text"] {
+  width: 100%;
+  padding: 8px 8px;
+  font-size: 14px;
+  border: 1px solid #333;
+  background: #222;
+  color: white;
+}
+
+button{
+  margin-top: 8px;
+  border: 1px solid #333;
+  background: #222;
+  color: white;
+  padding: 8px 8px;
 }
 
 #frame-label {
@@ -71,4 +92,78 @@ input[type="range"] {
   grid-column: 1 / -1;
   color: #999;
   font-size: 12px;
+}
+
+.hidden {
+  display: none;
+}
+
+button {
+
+  width: 100%;
+
+  padding: 10px 12px;
+
+  border: 1px solid #444;
+
+  border-radius: 8px;
+
+  background: #222;
+
+  color: white;
+
+  cursor: pointer;
+
+}
+
+button:hover {
+
+  background: #2d2d2d;
+
+}
+
+.hidden {
+
+  display: none;
+
+}
+
+.comparison-search {
+
+  margin-top: 10px;
+
+}
+
+.comparison-search input {
+
+  width: 100%;
+
+  padding: 10px 12px;
+
+  border: 1px solid #444;
+
+  border-radius: 8px;
+
+  background: #111;
+
+  color: white;
+
+}
+
+#patient-id {
+  width: 100%;
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid #444;
+  border-radius: 8px;
+  background: #111;
+  color: white;
+}
+
+.comparison {
+  margin-top: 24px;
+}
+
+#toggle-patient-id {
+  margin-top: 12px;
 }

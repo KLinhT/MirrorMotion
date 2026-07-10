@@ -1,6 +1,8 @@
 import os 
 import cv2
 import numpy as np
+import random
+
 
 import config
 import hand_detection
@@ -18,12 +20,22 @@ angle_rows = []
 for filename in os.listdir(config.INPUT_FOLDER):
 
     path = os.path.join(config.INPUT_FOLDER, filename)
+    patient_number = f"P{random.randint(100000, 999999)}"
 
     # read the image 
     image = cv2.imread(path)
+
+    if image is None:
+        print(f"Could not read image, skipping: {filename}")
+        print(f"Path attempted: {path}")
+        continue
+
     result = hand_detection.detect_hands(image)
 
-    # hand landmarks detected
+    if not result.multi_hand_landmarks:
+        print(f"No hand detected, skipping: {filename}")
+        continue
+
     hand_landmarks = result.multi_hand_landmarks[0]
 
     # coordinates of each landmark 
@@ -44,7 +56,8 @@ for filename in os.listdir(config.INPUT_FOLDER):
     )
 
     # Save landmark row
-    row = {"image": filename}
+    row = {"image": filename,
+           "patient_number": patient_number}
 
     for i in range(21):
         row[f"x_{i}"] = normalised_coords[i][0]
