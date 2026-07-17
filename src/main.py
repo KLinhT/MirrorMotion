@@ -18,7 +18,7 @@ angle_rows = []
 
 # iterate through all images in the input folder
 for filename in os.listdir(config.INPUT_FOLDER):
-
+ 
     path = os.path.join(config.INPUT_FOLDER, filename)
     patient_number = f"P{random.randint(100000, 999999)}"
 
