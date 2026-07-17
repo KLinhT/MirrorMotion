@@ -3,22 +3,29 @@ import "./style.css";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
-import { loadCSV, landmarkRowToVectors } from "./csvLoader";
+import { connectLiveTracking } from "./liveTrackingSocket";
 import { HandSkeleton } from "./handSkeleton";
-import { createAngleMap, updateAnglePanel } from "./anglePanel";
+import { updateAnglePanel } from "./anglePanel";
 
 
+// -----------
 // HTML Elements
+// -----------
 const viewer = document.getElementById("viewer");
-const frameSlider = document.getElementById("frame-slider");
-const frameLabel = document.getElementById("frame-label");
-const addComparisonHandBtn = document.getElementById("addComparisonHandBtn");
-const patientSearchPanel = document.getElementById("toggle-patient-id");
-const patientInput = document.getElementById("patient-id");
+const statusLabel = document.getElementById("frame-label");
+
+// -----------
+// State
+// -----------
+
+let liveTrackingSocket = null;
+let liveTrackingActive = false;
 
 
+// ----------------
+// Scene
+// ----------------
 
-// Initialise 3js scene, camera, renderer
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x111111);
 
@@ -31,15 +38,39 @@ const camera = new THREE.PerspectiveCamera(
 
 camera.position.set(0, 0, 5);
 
-const renderer = new THREE.WebGLRenderer({ antialias: true });
-renderer.setSize(viewer.clientWidth, viewer.clientHeight);
-renderer.setPixelRatio(window.devicePixelRatio);
+const renderer = new THREE.WebGLRenderer({
+
+  antialias: true,
+
+});
+
+renderer.setSize(
+  viewer.clientWidth,
+  viewer.clientHeight
+);
+
+renderer.setPixelRatio(
+  Math.min(window.devicePixelRatio, 
+  2)
+);
+
 viewer.appendChild(renderer.domElement);
 
 
-const controls = new OrbitControls(camera, renderer.domElement);
+// ---------------
+// Controls
+// ---------------
+
+const controls = new OrbitControls(
+  camera, 
+  renderer.domElement
+);
+
 controls.enableDamping = true;
 
+// ---------------
+// Lights and Helpers
+// ---------------  
 const ambientLight = new THREE.AmbientLight(0xffffff, 0.7);
 scene.add(ambientLight);
 
@@ -54,154 +85,133 @@ scene.add(grid);
 const axes = new THREE.AxesHelper(1);
 scene.add(axes);
 
-// Create the hand skeleton
+// ---------------
+// Hand Skeleton
+// ---------------  
 const skeleton = new HandSkeleton(scene, {
   jointColor: 0x4cc9f0,
   boneColor: 0xffffff,
 });
 
-const comparisonSkeleton = new HandSkeleton(scene, {
-  jointColor: 0xffb703,
-  boneColor: 0xffb703,
-});
 
-comparisonSkeleton.setVisible(false);
-
-let allLandmarkRows = [];
-let landmarkRows = [];
-let angleByImage = new Map();
-
-// Main application logic
-async function init() {
-  allLandmarkRows = await loadCSV("/normalized_landmarks.csv");
-  landmarkRows = allLandmarkRows;
-
-  const angleRows = await loadCSV("/joint_angles.csv");
-
-  populatePatientDropdown(allLandmarkRows);
-  patientInput.addEventListener("change", () => {
-  updateComparisonHand(patientInput.value);
-  });
-
-
-  angleByImage = createAngleMap(angleRows);
-
-  frameSlider.max = String(landmarkRows.length - 1);
-  frameSlider.value = "0";
-
-  showFrame(0);
-
-  frameSlider.addEventListener("input", () => {
-    showFrame(Number(frameSlider.value));
-  });
-
-  animate();
+// ---------------
+// Status
+// ---------------
+function setStatus(message) {
+  if (statusLabel) {
+    statusLabel.textContent = message;
+  }
+  console.log(message);
 }
 
+// ---------------
+// Live Tracking
+// ---------------
 
-// Update the 3D scene and angle panel for a given frame index
-function showFrame(index) {
-  const row = landmarkRows[index];
-
-  if (!row) {
-    return;
+function centerLandmarks(landmarks) {
+  if (!Array.isArray(landmarks) || landmarks.length === 0) {
+    return landmarks;
   }
 
-  const landmarks = landmarkRowToVectors(row);
-  skeleton.update(landmarks);
+  const bounds = new THREE.Box3().setFromPoints(landmarks);
+  const center = bounds.getCenter(new THREE.Vector3());
 
-  frameLabel.textContent = `${row.image} — Frame ${index}`;
-
-  const angleRow = angleByImage.get(row.image);
-  updateAnglePanel(angleRow);
+  return landmarks.map((landmark) =>
+    landmark.clone().sub(center)
+  );
 }
 
+function startLiveTrackingConnection() {
+  setStatus("Connecting to tracking backend...");
+  liveTrackingSocket = connectLiveTracking({
+    onOpen: () => {
+      liveTrackingActive = true;
+      setStatus("Live tracking connected");
+    },
+    onFrame: ({ landmarks, angles }) => {
+      liveTrackingActive = true;
+      const centeredLandmarks = centerLandmarks(landmarks);
+      skeleton.update(centeredLandmarks);
+      skeleton.setVisible(true);
+      if (angles) {
+        updateAnglePanel(angles);
+      }
+      setStatus("Hand detected");
+    },
+
+    onHandLost: () => {
+      skeleton.setVisible(false);
+      setStatus("No hand detected");
+    },
+
+    onClose: () => {
+      liveTrackingActive = false;
+      liveTrackingSocket = null;
+      skeleton.setVisible(false);
+      setStatus("Tracking backend disconnected");
+    },
+
+    onError: error => {
+      liveTrackingActive = false;
+      skeleton.setVisible(false);
+      console.error(
+        "Live-tracking connection error:",
+        error
+      );
+      setStatus("Unable to connect to tracking backend");
+    },
+
+  });
+
+}
+
+// ---------------
+// Animation Loop
+// ---------------
 function animate() {
   requestAnimationFrame(animate);
-
   controls.update();
   renderer.render(scene, camera);
 }
-
+// ---------------
+// Window events
+// ---------------
 window.addEventListener("resize", () => {
-  camera.aspect = viewer.clientWidth / viewer.clientHeight;
+  const width = viewer.clientWidth;
+  const height = viewer.clientHeight;
+  camera.aspect = width / height;
   camera.updateProjectionMatrix();
-
-  renderer.setSize(viewer.clientWidth, viewer.clientHeight);
+  renderer.setSize(width, height);
 });
 
-init().catch(error => {
+window.addEventListener("beforeunload", () => {
+  if (liveTrackingSocket) {
+    liveTrackingSocket.close();
+  }
+});
+// -----------------------------------------------------------------------------
+// Application startup
+// -----------------------------------------------------------------------------
+function init() {
+  animate();
+  startLiveTrackingConnection();
+}
+try {
+  init();
+} catch (error) {
   console.error(error);
-
   document.body.innerHTML = `
-    <pre style="color: white; padding: 20px; white-space: pre-wrap;">
-${error.message}
-    </pre>
+    <pre
+      style="
+        color: white;
+        padding: 20px;
+        white-space: pre-wrap;
+      "
+    >${error.message}</pre>
   `;
-});
-
-// Add Comparison Hand Event Listeners
-
-addComparisonHandBtn.addEventListener("click", () => {
-  patientSearchPanel.classList.toggle("hidden");
-
-  if(!patientSearchPanel.classList.contains("hidden"))
-  {
-    patientInput.focus();
-  }
-});
-
-function getPatientNumber(row) {
-  return row.patient_number
 }
 
-function populatePatientDropdown(rows) {
-  const patientNumbers = [...new Set(
-    rows
-      .map(row => getPatientNumber(row))
-      .filter(value => value !== undefined && value !== null && value !== "")
-  )];
 
 
-  patientInput.innerHTML = `
 
-    <option value="">Select patient...</option>
 
-    ${patientNumbers
-
-      .map(patientNumber => {
-
-        return `<option value="${patientNumber}">${patientNumber}</option>`;
-
-      })
-
-      .join("")}
-
-  `;
-
-}
-
-function updateComparisonHand(patientNumber) {
-  if (!patientNumber) {
-    comparisonSkeleton.setVisible(false);
-    return;
-  }
-
-  const comparisonRow = allLandmarkRows.find(row => {
-    return String(getPatientNumber(row)) === String(patientNumber);
-  });
-
-  if (!comparisonRow) {
-    console.warn(`No comparison hand found for patient: ${patientNumber}`);
-    comparisonSkeleton.setVisible(false);
-    return;
-  }
-
-  const comparisonLandmarks = landmarkRowToVectors(comparisonRow);
-
-  // Offset slightly so the two hands do not perfectly overlap.
-  
-
-  comparisonSkeleton.update(comparisonLandmarks);
-  comparisonSkeleton.setVisible(true);
-}

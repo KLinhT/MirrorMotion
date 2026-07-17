@@ -2,18 +2,25 @@ import numpy as np
 from config import JOINTS
 
 def calculate_angles(a, b, c):
-    # Calculate the vectors
+
     ba = a - b
     bc = c - b
+    ba_length = np.linalg.norm(ba)
+    bc_length = np.linalg.norm(bc)
 
-    # Calculate the cosine of the angle using the dot product formula
-    cosine_angle = np.dot(ba, bc) / (np.linalg.norm(ba) * np.linalg.norm(bc))
+    if ba_length == 0 or bc_length == 0:
+        return float("nan")
 
-    # Clip the cosine value to the range [-1, 1] to avoid numerical issues
-    cosine_angle = np.clip(cosine_angle, -1.0, 1.0)
+    cosine_angle = np.dot(ba, bc) / (ba_length * bc_length)
 
-    # Calculate the angle in radians and then convert to degrees
+    cosine_angle = np.clip(
+        cosine_angle,
+        -1.0,
+        1.0,
+    )
+    
     angle = np.arccos(cosine_angle)
+
     return np.degrees(angle)
 
 def calculate_joint_angles(landmarks):
