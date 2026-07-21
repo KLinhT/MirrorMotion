@@ -1,7 +1,3 @@
-export function createAngleMap(angleRows) {
-  return new Map(angleRows.map(row => [row.image, row]));
-}
-
 export function updateAnglePanel(angleRow) {
   const panel = document.getElementById("angle-panel");
 

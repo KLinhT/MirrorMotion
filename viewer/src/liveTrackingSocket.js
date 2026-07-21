@@ -2,7 +2,7 @@
 import * as THREE from "three";
 
 const DEFAULT_SOCKET_URL = "ws://localhost:8765";
-const LANDMARK_SCALE = 2;
+const LANDMARK_SCALE = 1.5;
 
 export function liveLandmarksToVectors(landmarks) {
   if (!Array.isArray(landmarks) || landmarks.length !== 21) {

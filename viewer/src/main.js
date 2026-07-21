@@ -8,11 +8,14 @@ import { HandSkeleton } from "./handSkeleton";
 import { updateAnglePanel } from "./anglePanel";
 
 
+
 // -----------
 // HTML Elements
 // -----------
 const viewer = document.getElementById("viewer");
 const statusLabel = document.getElementById("frame-label");
+const panel = document.getElementById("angle-panel");
+
 
 // -----------
 // State
@@ -20,6 +23,7 @@ const statusLabel = document.getElementById("frame-label");
 
 let liveTrackingSocket = null;
 let liveTrackingActive = false;
+let angleMap = new Map();
 
 
 // ----------------
@@ -129,6 +133,7 @@ function startLiveTrackingConnection() {
       setStatus("Live tracking connected");
     },
     onFrame: ({ landmarks, angles }) => {
+      console.log("Received angles:", angles);
       liveTrackingActive = true;
       const centeredLandmarks = centerLandmarks(landmarks);
       skeleton.update(centeredLandmarks);
@@ -195,6 +200,7 @@ window.addEventListener("beforeunload", () => {
 function init() {
   animate();
   startLiveTrackingConnection();
+
 }
 try {
   init();
