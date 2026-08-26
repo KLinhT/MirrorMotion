@@ -163,3 +163,17 @@ button:hover {
 #toggle-patient-id {
   margin-top: 12px;
 }
+
+.idle-message {
+  margin: 0;
+  padding: 12px;
+  border: 1px solid #333;
+  border-radius: 8px;
+  color: #b8b8b8;
+  line-height: 1.5;
+}
+
+#frame-label {
+  margin: 12px 0 20px;
+  color: #b8b8b8;
+}

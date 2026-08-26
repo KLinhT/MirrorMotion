@@ -23,7 +23,9 @@ const panel = document.getElementById("angle-panel");
 
 let liveTrackingSocket = null;
 let liveTrackingActive = false;
-let angleMap = new Map();
+let idleMode = true;
+let lastHandDetectedAt = 0;
+const HAND_LOST_DELAY = 1500;
 
 
 // ----------------
@@ -97,6 +99,9 @@ const skeleton = new HandSkeleton(scene, {
   boneColor: 0xffffff,
 });
 
+const idleLandmarks = createIdleHandLandmarks();
+skeleton.update(idleLandmarks);
+skeleton.setVisible(true);
 
 // ---------------
 // Status
@@ -127,54 +132,74 @@ function centerLandmarks(landmarks) {
 
 function startLiveTrackingConnection() {
   setStatus("Connecting to tracking backend...");
+  showIdleAngleMessage();
+
   liveTrackingSocket = connectLiveTracking({
     onOpen: () => {
-      liveTrackingActive = true;
-      setStatus("Live tracking connected");
+      setStatus("Place your hand in view");
     },
+
     onFrame: ({ landmarks, angles }) => {
-      console.log("Received angles:", angles);
+      lastHandDetectedAt = performance.now();
       liveTrackingActive = true;
-      const centeredLandmarks = centerLandmarks(landmarks);
+      idleMode = false;
+
+      resetSkeletonTransform();
+
+      const centeredLandmarks =
+        centerLandmarks(landmarks);
+
       skeleton.update(centeredLandmarks);
       skeleton.setVisible(true);
-      if (angles) {
-        updateAnglePanel(angles);
-      }
-      setStatus("Hand detected");
+
+      updateAnglePanel(angles);
+      setStatus("Live hand tracking");
     },
 
     onHandLost: () => {
-      skeleton.setVisible(false);
-      setStatus("No hand detected");
+      setStatus("Hand temporarily lost");
     },
 
     onClose: () => {
-      liveTrackingActive = false;
       liveTrackingSocket = null;
-      skeleton.setVisible(false);
+      enterIdleMode();
+
+      skeleton.update(idleLandmarks);
+
       setStatus("Tracking backend disconnected");
     },
 
-    onError: error => {
-      liveTrackingActive = false;
-      skeleton.setVisible(false);
+    onError: (error) => {
       console.error(
         "Live-tracking connection error:",
         error
       );
-      setStatus("Unable to connect to tracking backend");
+
+      enterIdleMode();
+      skeleton.update(idleLandmarks);
+
+      setStatus(
+        "Tracking unavailable — demo mode"
+      );
     },
-
   });
-
 }
 
 // ---------------
 // Animation Loop
 // ---------------
-function animate() {
+function animate(time) {
   requestAnimationFrame(animate);
+
+  if (
+    !idleMode &&
+    performance.now() - lastHandDetectedAt >
+      HAND_LOST_DELAY
+  ) {
+    enterIdleMode();
+    skeleton.update(idleLandmarks);
+  }
+  updateIdleHandAnimation(time);
   controls.update();
   renderer.render(scene, camera);
 }
@@ -194,6 +219,86 @@ window.addEventListener("beforeunload", () => {
     liveTrackingSocket.close();
   }
 });
+
+// ---------------
+// Helper Functions
+// ---------------
+function showIdleAngleMessage() {
+  const anglePanel = document.getElementById("angle-panel");
+
+  if (anglePanel) {
+    anglePanel.innerHTML = `
+      <p class="idle-message">
+        Place your hand in view to display live joint angles.
+      </p>
+    `;
+  }
+}
+
+function enterIdleMode() {
+  if (idleMode) {
+    return;
+  }
+  idleMode = true;
+  liveTrackingActive = false;
+  showIdleAngleMessage();
+  setStatus("Place your hand in view");
+}
+
+function updateIdleHandAnimation() {
+
+  if (!idleMode) {
+
+    return;
+
+  }
+
+  skeleton.setVisible(true);
+
+}
+
+function resetSkeletonTransform() {
+
+  // No-op: HandSkeleton does not expose a root group.
+
+}
+
+function createIdleHandLandmarks() {
+  const points = [
+    [0.00, -1.00, 0.00],
+
+    [-0.28, -0.72, 0.02],
+    [-0.48, -0.45, 0.04],
+    [-0.63, -0.15, 0.06],
+    [-0.72, 0.12, 0.08],
+
+    [-0.18, -0.45, 0.00],
+    [-0.22, -0.05, 0.00],
+    [-0.23, 0.38, 0.00],
+    [-0.22, 0.75, 0.00],
+
+    [0.00, -0.40, 0.00],
+    [0.00, 0.08, 0.00],
+    [0.00, 0.55, 0.00],
+    [0.00, 0.95, 0.00],
+
+    [0.18, -0.44, 0.00],
+    [0.22, 0.00, 0.00],
+    [0.23, 0.42, 0.00],
+    [0.22, 0.78, 0.00],
+
+    [0.34, -0.54, 0.00],
+    [0.45, -0.18, 0.00],
+    [0.50, 0.15, 0.00],
+    [0.52, 0.44, 0.00],
+  ];
+
+  return points.map(
+    ([x, y, z]) =>
+      new THREE.Vector3(x, y, z)
+  );
+}
+
 // -----------------------------------------------------------------------------
 // Application startup
 // -----------------------------------------------------------------------------
